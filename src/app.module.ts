@@ -19,6 +19,8 @@ import { KafkaConsumerService } from './kafka-consumer.service'; // Ensure this 
           },
           producer: {
             allowAutoTopicCreation: true, // Allows NestJS to create topics if they don't exist
+            // 'acks' is not directly configurable here in MicroserviceOptions for Transport.KAFKA.
+            // The underlying kafkajs producer defaults to acks: 1 (leader acknowledgment).
           },
         },
       },

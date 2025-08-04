@@ -17,6 +17,10 @@ async function bootstrap() {
       },
       consumer: {
         groupId: 'my-nestjs-consumer-group', // Consumer group ID
+        // 'fromBeginning' is NOT set here. For NestJS microservices,
+        // the 'fromBeginning' behavior is often tied to the consumer group's
+        // offset management. If you need to re-read old messages for testing,
+        // you might need to reset the consumer group in Confluent Control Center.
       },
     },
   });

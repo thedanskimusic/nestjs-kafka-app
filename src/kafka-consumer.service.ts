@@ -4,8 +4,10 @@ import { EventPattern, Payload } from '@nestjs/microservices';
 
 @Injectable()
 export class KafkaConsumerService {
-  // Removed OnModuleInit, OnModuleDestroy, and manual consumer management.
-  // NestJS's @EventPattern handles the consumer lifecycle automatically.
+  // NestJS's @EventPattern decorator automatically handles the consumer's
+  // connection, subscription, and message processing.
+  // We do not need OnModuleInit/OnModuleDestroy or manual consumer.run() here
+  // when using @EventPattern for basic consumption.
 
   /**
    * This method acts as a Kafka consumer for the 'my-topic' topic.

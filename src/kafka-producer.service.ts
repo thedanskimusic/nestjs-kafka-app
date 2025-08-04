@@ -9,14 +9,13 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   constructor(@Inject('KAFKA_SERVICE') private client: ClientKafka) {}
 
   async onModuleInit() {
-    // This is crucial for the producer to connect to Kafka.
-    // It ensures topics are created and the producer is ready before messages are sent.
     try {
       await this.client.connect();
       console.log('Kafka Producer connected successfully.');
     } catch (error) {
       console.error('Failed to connect Kafka Producer:', error);
-      // Depending on your application, you might want to exit or handle this more gracefully
+      // In a real application, you might want to implement retry logic or health checks here.
+      // For now, we'll just log the error.
     }
   }
 
@@ -31,19 +30,22 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Sends a message to a specified Kafka topic.
+   * Uses client.emit for event-driven communication (no reply expected).
    * @param topic The Kafka topic to send the message to.
    * @param message The message payload.
    */
   async sendMessage(topic: string, message: any) {
     console.log(`Attempting to send message to topic "${topic}":`, message);
     return new Promise((resolve, reject) => {
-      this.client.emit(topic, message).pipe(
+      // Use client.emit for event-driven communication.
+      // It does not expect a reply topic.
+      this.client.emit(topic, JSON.stringify(message)).pipe( // Use emit instead of send
         tap(() => {
-          console.log(`Message successfully sent to topic "${topic}"`);
+          console.log(`Message successfully emitted to topic "${topic}"`);
           resolve(true); // Resolve with a success indicator
         }),
         catchError((err) => {
-          console.error(`ERROR: Failed to send message to topic "${topic}":`, err);
+          console.error(`ERROR: Failed to emit message to topic "${topic}":`, err);
           reject(err); // Reject the promise with the error
           return throwError(() => err); // Re-throw the error for NestJS's internal error handling
         })
