@@ -1,29 +1,70 @@
 // src/kafka-consumer.service.ts
-import { Injectable } from '@nestjs/common';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Kafka } from 'kafkajs';
 
 @Injectable()
-export class KafkaConsumerService {
-  // Removed OnModuleInit, OnModuleDestroy, and manual consumer management.
-  // NestJS's @EventPattern handles the consumer lifecycle automatically.
+export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
+  private kafka: Kafka;
+  private consumer: any;
 
-  /**
-   * This method acts as a Kafka consumer for the 'my-topic' topic.
-   * The @EventPattern decorator tells NestJS to listen for messages on this topic.
-   * @param data The payload of the Kafka message.
-   */
-  @EventPattern('my-topic')
-  async handleMyTopicMessage(@Payload() data: any) {
-    console.log('Received message from @EventPattern "my-topic":', data);
-    // Here you would process the message, e.g., save to a database,
-    // trigger other services, etc.
+  onModuleInit() {
+    console.log('KafkaConsumerService initializing...');
+    this.initializeConsumer();
   }
 
-  /**
-   * You can add more consumer methods for different topics.
-   * @EventPattern('another-topic')
-   * async handleAnotherTopicMessage(@Payload() data: any) {
-   * console.log('Received message from "another-topic":', data);
-   * }
-   */
+  async onModuleDestroy() {
+    if (this.consumer) {
+      await this.consumer.disconnect();
+      console.log('Kafka consumer disconnected');
+    }
+  }
+
+  private async initializeConsumer() {
+    try {
+      // Initialize Kafka client
+      this.kafka = new Kafka({
+        clientId: 'nestjs-direct-consumer',
+        brokers: ['localhost:9092'],
+      });
+
+      // Create consumer
+      this.consumer = this.kafka.consumer({ 
+        groupId: 'nestjs-direct-consumer-group',
+        allowAutoTopicCreation: true,
+      });
+
+      // Connect and subscribe
+      await this.consumer.connect();
+      console.log('Kafka consumer connected successfully');
+
+      await this.consumer.subscribe({ 
+        topic: 'my-topic',
+        fromBeginning: false 
+      });
+
+      // Start consuming messages
+      await this.consumer.run({
+        eachMessage: async ({ topic, partition, message }) => {
+          try {
+            const messageValue = message.value?.toString();
+            const parsedMessage = messageValue ? JSON.parse(messageValue) : messageValue;
+            
+            console.log('Received message from direct consumer:', {
+              topic,
+              partition,
+              offset: message.offset,
+              key: message.key?.toString(),
+              value: parsedMessage,
+            });
+          } catch (error) {
+            console.error('Error processing message:', error);
+          }
+        },
+      });
+
+      console.log('KafkaConsumerService initialized and consuming messages from my-topic');
+    } catch (error) {
+      console.error('Failed to initialize Kafka consumer:', error);
+    }
+  }
 }

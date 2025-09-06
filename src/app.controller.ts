@@ -28,6 +28,7 @@ export class AppController {
       return { status: 'success', message: 'Message sent to Kafka' };
     } catch (error) {
       // Return a more detailed error message from the controller
+      console.error('Controller caught error sending Kafka message:', error);
       return { status: 'error', message: 'Failed to send message to Kafka', error: error.message };
     }
   }
