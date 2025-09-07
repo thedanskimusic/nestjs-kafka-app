@@ -1,6 +1,7 @@
 // src/message-generator.service.ts
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { KafkaProducerService } from './kafka-producer.service';
+import { DashboardWebSocketGateway } from './websocket/websocket.gateway';
 
 interface MessageGeneratorState {
   isRunning: boolean;
@@ -19,7 +20,11 @@ export class MessageGeneratorService implements OnModuleDestroy {
 
   private intervalId?: NodeJS.Timeout;
 
-  constructor(private readonly kafkaProducerService: KafkaProducerService) {}
+  constructor(
+    private readonly kafkaProducerService: KafkaProducerService,
+    @Inject(forwardRef(() => DashboardWebSocketGateway))
+    private readonly webSocketGateway: DashboardWebSocketGateway,
+  ) {}
 
   async onModuleDestroy() {
     this.stop();
@@ -44,6 +49,10 @@ export class MessageGeneratorService implements OnModuleDestroy {
       await this.generateRandomMessage();
     }, intervalMs);
 
+    // Emit WebSocket event
+    this.webSocketGateway.emitGeneratorStarted(intervalMs);
+    this.webSocketGateway.emitGeneratorStateUpdate(this.getState());
+
     // Generate first message immediately
     this.generateRandomMessage();
   }
@@ -64,6 +73,10 @@ export class MessageGeneratorService implements OnModuleDestroy {
 
     this.state.isRunning = false;
     console.log('Message generator paused');
+
+    // Emit WebSocket event
+    this.webSocketGateway.emitGeneratorPaused();
+    this.webSocketGateway.emitGeneratorStateUpdate(this.getState());
   }
 
   /**
@@ -83,6 +96,10 @@ export class MessageGeneratorService implements OnModuleDestroy {
     this.intervalId = setInterval(async () => {
       await this.generateRandomMessage();
     }, this.state.intervalMs);
+
+    // Emit WebSocket event
+    this.webSocketGateway.emitGeneratorResumed();
+    this.webSocketGateway.emitGeneratorStateUpdate(this.getState());
   }
 
   /**
@@ -98,6 +115,10 @@ export class MessageGeneratorService implements OnModuleDestroy {
     this.state.messageCount = 0;
     this.state.lastMessageTime = undefined;
     console.log('Message generator stopped and state reset');
+
+    // Emit WebSocket event
+    this.webSocketGateway.emitGeneratorStopped();
+    this.webSocketGateway.emitGeneratorStateUpdate(this.getState());
   }
 
   /**
@@ -117,6 +138,9 @@ export class MessageGeneratorService implements OnModuleDestroy {
       // Restart with new interval
       this.pause();
       this.resume();
+    } else {
+      // Just emit state update if not running
+      this.webSocketGateway.emitGeneratorStateUpdate(this.getState());
     }
   }
 
@@ -132,9 +156,22 @@ export class MessageGeneratorService implements OnModuleDestroy {
       
       console.log(`Generating message #${this.state.messageCount}:`, randomMessage);
       
+      // Send to Kafka
       await this.kafkaProducerService.sendMessage('my-topic', randomMessage);
+      
+      // Emit WebSocket event for new message
+      this.webSocketGateway.emitNewMessage(randomMessage);
+      
+      // Emit state update
+      this.webSocketGateway.emitGeneratorStateUpdate(this.getState());
     } catch (error) {
       console.error('Error generating random message:', error);
+      // Emit error event
+      this.webSocketGateway.emitError({
+        type: 'message_generation_error',
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
