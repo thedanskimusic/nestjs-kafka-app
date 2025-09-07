@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { KafkaProducerService } from './kafka-producer.service';
 import { KafkaConsumerService } from './kafka-consumer.service'; // Ensure this is imported
+import { MessageGeneratorService } from './message-generator.service';
 
 @Module({
   imports: [
@@ -27,6 +28,6 @@ import { KafkaConsumerService } from './kafka-consumer.service'; // Ensure this 
     ]),
   ],
   controllers: [AppController],
-  providers: [AppService, KafkaProducerService, KafkaConsumerService],
+  providers: [AppService, KafkaProducerService, KafkaConsumerService, MessageGeneratorService],
 })
 export class AppModule {}
