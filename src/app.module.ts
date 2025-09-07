@@ -6,6 +6,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { KafkaProducerService } from './kafka-producer.service';
 import { KafkaConsumerService } from './kafka-consumer.service'; // Ensure this is imported
 import { MessageGeneratorService } from './message-generator.service';
+import { DashboardWebSocketGateway } from './websocket/websocket.gateway';
 
 @Module({
   imports: [
@@ -28,6 +29,6 @@ import { MessageGeneratorService } from './message-generator.service';
     ]),
   ],
   controllers: [AppController],
-  providers: [AppService, KafkaProducerService, KafkaConsumerService, MessageGeneratorService],
+  providers: [AppService, KafkaProducerService, KafkaConsumerService, MessageGeneratorService, DashboardWebSocketGateway],
 })
 export class AppModule {}
