@@ -7,6 +7,10 @@ class ApiService {
   private api = axios.create({
     baseURL: API_BASE_URL,
     timeout: 5000,
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'application/json',
+    },
   });
 
   // Generator control methods
@@ -52,11 +56,21 @@ class ApiService {
 
   async updateInterval(intervalMs: number) {
     try {
+      console.log('API: Making request to update interval:', intervalMs);
+      console.log('API: Request URL:', `${API_BASE_URL}/generator/interval`);
       const response = await this.api.put('/generator/interval', { intervalMs });
+      console.log('API: Response received:', response.data);
       return response.data;
-    } catch (error) {
-      console.error('Failed to update interval:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('API: Failed to update interval:', error);
+      console.error('API: Error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+      });
+      throw new Error(error.response?.data?.message || error.message || 'Failed to update interval');
     }
   }
 

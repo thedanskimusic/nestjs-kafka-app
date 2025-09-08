@@ -246,6 +246,15 @@ export const Dashboard: React.FC = () => {
             addEvent('generator:stopped', {});
           }
           break;
+        case 'updateInterval':
+          await apiService.updateInterval(data?.intervalMs || 5000);
+          // Refresh state after action
+          const intervalState = await apiService.getGeneratorState();
+          if (intervalState.status === 'success') {
+            setGeneratorState(intervalState.state);
+            addEvent('generator:intervalUpdated', { intervalMs: data?.intervalMs || 5000 });
+          }
+          break;
       }
     } catch (error) {
       console.error(`Failed to ${action} generator:`, error);

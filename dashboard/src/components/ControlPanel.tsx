@@ -1,5 +1,5 @@
 // src/components/ControlPanel.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Play, Pause, Square, RotateCcw, Settings } from 'lucide-react';
 import type { ControlPanelProps } from '../types';
@@ -63,6 +63,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const [intervalMs, setIntervalMs] = useState(state.intervalMs);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Sync local interval state with generator state
+  useEffect(() => {
+    setIntervalMs(state.intervalMs);
+  }, [state.intervalMs]);
+
   const handleIntervalChange = (value: string) => {
     const numValue = parseInt(value);
     if (!isNaN(numValue) && numValue >= 1000 && numValue <= 30000) {
@@ -71,9 +76,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   };
 
   const handleUpdateInterval = async () => {
+    console.log('ControlPanel: Update button clicked, intervalMs:', intervalMs);
     setIsLoading(true);
     try {
-      await onAction('start', { intervalMs }); // This will update the interval
+      console.log('ControlPanel: Calling onAction with updateInterval');
+      await onAction('updateInterval', { intervalMs }); // This will update the interval
+      console.log('ControlPanel: onAction completed successfully');
+    } catch (error) {
+      console.error('ControlPanel: Error updating interval:', error);
     } finally {
       setIsLoading(false);
     }
