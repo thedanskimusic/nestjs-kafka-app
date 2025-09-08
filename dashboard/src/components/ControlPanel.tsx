@@ -61,6 +61,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onAction,
 }) => {
   const [intervalMs, setIntervalMs] = useState(state.intervalMs);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleIntervalChange = (value: string) => {
     const numValue = parseInt(value);
@@ -69,11 +70,25 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     }
   };
 
-  const handleUpdateInterval = () => {
-    onAction('start', { intervalMs }); // This will update the interval
+  const handleUpdateInterval = async () => {
+    setIsLoading(true);
+    try {
+      await onAction('start', { intervalMs }); // This will update the interval
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const isDisabled = !connectionState.isConnected;
+  const handleAction = async (action: string, data?: any) => {
+    setIsLoading(true);
+    try {
+      await onAction(action, data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isDisabled = !connectionState.isConnected || isLoading;
 
   return (
     <ControlCard>
@@ -83,42 +98,42 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <ButtonGroup>
           <Button
             variant="success"
-            onClick={() => onAction('start', { intervalMs })}
+            onClick={() => handleAction('start', { intervalMs })}
             disabled={isDisabled || state.isRunning}
             size="md"
           >
             <Play size={16} />
-            Start
+            {isLoading ? 'Loading...' : 'Start'}
           </Button>
           
           <Button
             variant="warning"
-            onClick={() => onAction('pause')}
+            onClick={() => handleAction('pause')}
             disabled={isDisabled || !state.isRunning}
             size="md"
           >
             <Pause size={16} />
-            Pause
+            {isLoading ? 'Loading...' : 'Pause'}
           </Button>
           
           <Button
             variant="warning"
-            onClick={() => onAction('resume')}
+            onClick={() => handleAction('resume')}
             disabled={isDisabled || state.isRunning}
             size="md"
           >
             <RotateCcw size={16} />
-            Resume
+            {isLoading ? 'Loading...' : 'Resume'}
           </Button>
           
           <Button
             variant="error"
-            onClick={() => onAction('stop')}
+            onClick={() => handleAction('stop')}
             disabled={isDisabled}
             size="md"
           >
             <Square size={16} />
-            Stop
+            {isLoading ? 'Loading...' : 'Stop'}
           </Button>
         </ButtonGroup>
       </ControlSection>

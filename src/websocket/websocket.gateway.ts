@@ -9,7 +9,8 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { Logger, Inject, forwardRef } from '@nestjs/common';
+import { MessageGeneratorService } from '../message-generator.service';
 
 @WebSocketGateway({
   cors: {
@@ -25,6 +26,11 @@ export class DashboardWebSocketGateway implements OnGatewayConnection, OnGateway
 
   private readonly logger = new Logger(DashboardWebSocketGateway.name);
   private connectedClients = new Map<string, Socket>();
+
+  constructor(
+    @Inject(forwardRef(() => MessageGeneratorService))
+    private readonly messageGeneratorService: MessageGeneratorService,
+  ) {}
 
   handleConnection(client: Socket) {
     this.connectedClients.set(client.id, client);
@@ -49,8 +55,8 @@ export class DashboardWebSocketGateway implements OnGatewayConnection, OnGateway
   @SubscribeMessage('generator:getState')
   handleGetState(@ConnectedSocket() client: Socket) {
     this.logger.log(`Client ${client.id} requested generator state`);
-    // This will be handled by the message generator service
-    client.emit('generator:stateRequested', { clientId: client.id });
+    const state = this.messageGeneratorService.getState();
+    client.emit('generator:stateUpdated', { state });
   }
 
   /**
@@ -62,10 +68,7 @@ export class DashboardWebSocketGateway implements OnGatewayConnection, OnGateway
     @MessageBody() data: { intervalMs?: number }
   ) {
     this.logger.log(`Client ${client.id} requested to start generator with interval: ${data.intervalMs || 5000}ms`);
-    client.emit('generator:startRequested', { 
-      clientId: client.id, 
-      intervalMs: data.intervalMs || 5000 
-    });
+    this.messageGeneratorService.start(data.intervalMs || 5000);
   }
 
   /**
@@ -74,7 +77,7 @@ export class DashboardWebSocketGateway implements OnGatewayConnection, OnGateway
   @SubscribeMessage('generator:pause')
   handlePauseGenerator(@ConnectedSocket() client: Socket) {
     this.logger.log(`Client ${client.id} requested to pause generator`);
-    client.emit('generator:pauseRequested', { clientId: client.id });
+    this.messageGeneratorService.pause();
   }
 
   /**
@@ -83,7 +86,7 @@ export class DashboardWebSocketGateway implements OnGatewayConnection, OnGateway
   @SubscribeMessage('generator:resume')
   handleResumeGenerator(@ConnectedSocket() client: Socket) {
     this.logger.log(`Client ${client.id} requested to resume generator`);
-    client.emit('generator:resumeRequested', { clientId: client.id });
+    this.messageGeneratorService.resume();
   }
 
   /**
@@ -92,7 +95,7 @@ export class DashboardWebSocketGateway implements OnGatewayConnection, OnGateway
   @SubscribeMessage('generator:stop')
   handleStopGenerator(@ConnectedSocket() client: Socket) {
     this.logger.log(`Client ${client.id} requested to stop generator`);
-    client.emit('generator:stopRequested', { clientId: client.id });
+    this.messageGeneratorService.stop();
   }
 
   /**
@@ -104,10 +107,7 @@ export class DashboardWebSocketGateway implements OnGatewayConnection, OnGateway
     @MessageBody() data: { intervalMs: number }
   ) {
     this.logger.log(`Client ${client.id} requested to update interval to: ${data.intervalMs}ms`);
-    client.emit('generator:intervalUpdateRequested', { 
-      clientId: client.id, 
-      intervalMs: data.intervalMs 
-    });
+    this.messageGeneratorService.setInterval(data.intervalMs);
   }
 
   // Public methods for emitting events to all connected clients

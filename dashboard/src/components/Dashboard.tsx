@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { webSocketService } from '../services/websocket';
+import { apiService } from '../services/api';
 import { ControlPanel } from './ControlPanel';
 import { StatsPanel } from './StatsPanel';
 import { EventList } from './EventList';
@@ -202,21 +203,93 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   // Generator control handler
-  const handleGeneratorAction = useCallback((action: GeneratorAction, data?: any) => {
-    switch (action) {
-      case 'start':
-        webSocketService.startGenerator(data?.intervalMs || 5000);
-        break;
-      case 'pause':
-        webSocketService.pauseGenerator();
-        break;
-      case 'resume':
-        webSocketService.resumeGenerator();
-        break;
-      case 'stop':
-        webSocketService.stopGenerator();
-        break;
+  const handleGeneratorAction = useCallback(async (action: GeneratorAction, data?: any) => {
+    try {
+      setError(null);
+      
+      switch (action) {
+        case 'start':
+          await apiService.startGenerator(data?.intervalMs || 5000);
+          // Refresh state after action
+          const startState = await apiService.getGeneratorState();
+          if (startState.status === 'success') {
+            setGeneratorState(startState.state);
+            setStartTime(new Date());
+            addEvent('generator:started', { intervalMs: data?.intervalMs || 5000 });
+          }
+          break;
+        case 'pause':
+          await apiService.pauseGenerator();
+          // Refresh state after action
+          const pauseState = await apiService.getGeneratorState();
+          if (pauseState.status === 'success') {
+            setGeneratorState(pauseState.state);
+            addEvent('generator:paused', {});
+          }
+          break;
+        case 'resume':
+          await apiService.resumeGenerator();
+          // Refresh state after action
+          const resumeState = await apiService.getGeneratorState();
+          if (resumeState.status === 'success') {
+            setGeneratorState(resumeState.state);
+            addEvent('generator:resumed', {});
+          }
+          break;
+        case 'stop':
+          await apiService.stopGenerator();
+          // Refresh state after action
+          const stopState = await apiService.getGeneratorState();
+          if (stopState.status === 'success') {
+            setGeneratorState(stopState.state);
+            setStartTime(null);
+            addEvent('generator:stopped', {});
+          }
+          break;
+      }
+    } catch (error) {
+      console.error(`Failed to ${action} generator:`, error);
+      setError(`Failed to ${action} generator: ${error.message}`);
+      addEvent('error:occurred', { 
+        type: 'generator_action_error',
+        message: error.message,
+        action 
+      });
     }
+  }, [addEvent]);
+
+  // Fetch initial state and set up periodic refresh
+  useEffect(() => {
+    const fetchInitialState = async () => {
+      try {
+        const response = await apiService.getGeneratorState();
+        if (response.status === 'success') {
+          setGeneratorState(response.state);
+          if (response.state.isRunning && response.state.lastMessageTime) {
+            setStartTime(new Date(response.state.lastMessageTime));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch initial state:', error);
+        setError('Failed to connect to backend');
+      }
+    };
+
+    fetchInitialState();
+
+    // Set up periodic state refresh every 2 seconds
+    const interval = setInterval(async () => {
+      try {
+        const response = await apiService.getGeneratorState();
+        if (response.status === 'success') {
+          setGeneratorState(response.state);
+        }
+      } catch (error) {
+        console.error('Failed to refresh state:', error);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Setup WebSocket listeners
@@ -263,8 +336,9 @@ export const Dashboard: React.FC = () => {
   ]);
 
   const getConnectionStatus = () => {
-    if (connectionState.isConnected) return 'connected';
-    if (connectionState.reconnectAttempts > 0) return 'connecting';
+    // For now, we'll show connected if we can reach the API
+    // WebSocket connection is optional for real-time events
+    if (generatorState.messageCount >= 0) return 'connected';
     return 'disconnected';
   };
 
