@@ -4,5 +4,16 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true
+  },
+  "projects": {
+    "nestjs-kafka-app": {
+      "type": "application",
+      "root": "",
+      "entryFile": "main",
+      "sourceRoot": "src",
+      "compilerOptions": {
+        "deleteOutDir": true
+      }
+    }
   }
 }

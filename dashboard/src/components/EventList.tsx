@@ -160,7 +160,7 @@ const getEventColor = (eventType: string) => {
 const formatEventDetails = (event: WebSocketEvent): string => {
   if (event.type === 'message:generated' && event.data.message) {
     const msg = event.data.message;
-    const details = [];
+    const details: string[] = [];
     
     if (msg.userId) details.push(`User: ${msg.userId}`);
     if (msg.orderId) details.push(`Order: ${msg.orderId}`);
