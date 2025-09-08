@@ -17,5 +17,10 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "exclude": [
+    "dashboard/**/*",
+    "node_modules",
+    "dist"
+  ]
 }

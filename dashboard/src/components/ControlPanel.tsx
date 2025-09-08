@@ -1,5 +1,5 @@
 // src/components/ControlPanel.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Play, Pause, Square, RotateCcw, Settings } from 'lucide-react';
 import type { ControlPanelProps } from '../types';
@@ -61,6 +61,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onAction,
 }) => {
   const [intervalMs, setIntervalMs] = useState(state.intervalMs);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Sync local interval state with generator state
+  useEffect(() => {
+    setIntervalMs(state.intervalMs);
+  }, [state.intervalMs]);
 
   const handleIntervalChange = (value: string) => {
     const numValue = parseInt(value);
@@ -69,11 +75,30 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     }
   };
 
-  const handleUpdateInterval = () => {
-    onAction('start', { intervalMs }); // This will update the interval
+  const handleUpdateInterval = async () => {
+    console.log('ControlPanel: Update button clicked, intervalMs:', intervalMs);
+    setIsLoading(true);
+    try {
+      console.log('ControlPanel: Calling onAction with updateInterval');
+      await onAction('updateInterval', { intervalMs }); // This will update the interval
+      console.log('ControlPanel: onAction completed successfully');
+    } catch (error) {
+      console.error('ControlPanel: Error updating interval:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const isDisabled = !connectionState.isConnected;
+  const handleAction = async (action: string, data?: any) => {
+    setIsLoading(true);
+    try {
+      await onAction(action, data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isDisabled = !connectionState.isConnected || isLoading;
 
   return (
     <ControlCard>
@@ -83,42 +108,42 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <ButtonGroup>
           <Button
             variant="success"
-            onClick={() => onAction('start', { intervalMs })}
+            onClick={() => handleAction('start', { intervalMs })}
             disabled={isDisabled || state.isRunning}
             size="md"
           >
             <Play size={16} />
-            Start
+            {isLoading ? 'Loading...' : 'Start'}
           </Button>
           
           <Button
             variant="warning"
-            onClick={() => onAction('pause')}
+            onClick={() => handleAction('pause')}
             disabled={isDisabled || !state.isRunning}
             size="md"
           >
             <Pause size={16} />
-            Pause
+            {isLoading ? 'Loading...' : 'Pause'}
           </Button>
           
           <Button
             variant="warning"
-            onClick={() => onAction('resume')}
+            onClick={() => handleAction('resume')}
             disabled={isDisabled || state.isRunning}
             size="md"
           >
             <RotateCcw size={16} />
-            Resume
+            {isLoading ? 'Loading...' : 'Resume'}
           </Button>
           
           <Button
             variant="error"
-            onClick={() => onAction('stop')}
+            onClick={() => handleAction('stop')}
             disabled={isDisabled}
             size="md"
           >
             <Square size={16} />
-            Stop
+            {isLoading ? 'Loading...' : 'Stop'}
           </Button>
         </ButtonGroup>
       </ControlSection>
